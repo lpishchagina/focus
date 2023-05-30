@@ -140,7 +140,9 @@ void doPruning(unsigned int p,
 List getChangePoints(Rcpp::NumericMatrix data, 
                      std::string method = "FOCuS0", 
                      std::string cost = "gauss",
-                     int step = 1, 
+                     int common_difference_step = 1,
+                     int common_ratio_step = 1, 
+                     int first_step_qhull = 5,
                      bool cand_nb = false, 
                      bool opt_changes = false, 
                      bool opt_costs = false) {
@@ -162,7 +164,7 @@ List getChangePoints(Rcpp::NumericMatrix data,
   get_helpB(typeCost, p, length, helpB, data);
   
   //get first step for qhull
-  int next_step_qhull = step + p + 1;         // step > p
+  int next_step_qhull = first_step_qhull + p;         // step > p
   
   //initialization
   std::list<int> candidates;     // change point candidates at time t
@@ -189,8 +191,14 @@ List getChangePoints(Rcpp::NumericMatrix data,
        }
      }
      //pruning
-     if(nb_at_time[i] >= next_step_qhull)
-       doPruning(p, candidates, isPruning, helpB);
+     if(nb_at_time[i] >= next_step_qhull ||  i == (length - 1)){
+       if (nb_at_time[i] > (p+1) ){
+         doPruning(p, candidates, isPruning, helpB);
+        // update-next_step_qhull
+         next_step_qhull = common_ratio_step * nb_at_time[i] + common_difference_step;
+       }
+     }
+       
   }
   //get res
   unsigned int change  = opt_change[length-1];
