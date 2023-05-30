@@ -192,11 +192,11 @@ List getChangePoints(Rcpp::NumericMatrix data,
      }
      //pruning
      if(nb_at_time[i] >= next_step_qhull ||  i == (length - 1)){
-       if (nb_at_time[i] > (p+1) ){
+      // if (nb_at_time[i] > (p+1) ){
          doPruning(p, candidates, isPruning, helpB);
         // update-next_step_qhull
-         next_step_qhull = common_ratio_step * nb_at_time[i] + common_difference_step;
-       }
+         next_step_qhull = common_ratio_step * candidates.size() + common_difference_step;
+      // }
      }
        
   }
