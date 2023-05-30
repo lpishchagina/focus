@@ -213,10 +213,8 @@ FocusCH <- function(data, fun.cost=cost_Focus0, common_difference_step=1, common
         
         ## update-next_step_qhull
         next_step_qhull <- common_ratio_step*list_cand$nb + common_difference_step
-        
-      
-      
       }
+    }
   }
   return(list_cand)
 }
