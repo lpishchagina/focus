@@ -204,7 +204,7 @@ FocusCH <- function(data, fun.cost=cost_Focus0, common_difference_step=1, common
     ## Run qhull
     if(list_cand$nb >= next_step_qhull | i == n){
       ## Qhull
-      if (list_cand$nb > p) {
+     # if (list_cand$nb > p) {
         hull <- convhulln(left_mean)
         ## Prune
         on_the_hull <- sort(unique(as.vector(hull)))
@@ -213,7 +213,7 @@ FocusCH <- function(data, fun.cost=cost_Focus0, common_difference_step=1, common
         
         ## update-next_step_qhull
         next_step_qhull <- common_ratio_step*list_cand$nb + common_difference_step
-      }
+    #  }
     }
   }
   return(list_cand)

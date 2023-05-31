@@ -145,7 +145,8 @@ List getChangePoints(Rcpp::NumericMatrix data,
                      int first_step_qhull = 5,
                      bool cand_nb = false, 
                      bool opt_changes = false, 
-                     bool opt_costs = false) {
+                     bool opt_costs = false,
+                     bool cands = false) {
   //data parameters
   unsigned int p = (unsigned int)data.ncol();
   unsigned int length = (unsigned int) data.nrow();
@@ -171,6 +172,7 @@ List getChangePoints(Rcpp::NumericMatrix data,
   std::vector<unsigned int> nb_at_time;   // vector of candidate number at time t
   std::vector<double>  opt_cost;          // optimal cost at time t
   std::vector<int>  opt_change;            // optimal change at time t
+  std::vector<unsigned int> candidate_set; // candidates at time t=length-1
   for (unsigned int i = 0; i < length; i++) {
    nb_at_time.push_back(0);
     opt_cost.push_back(INFINITY);
@@ -192,13 +194,10 @@ List getChangePoints(Rcpp::NumericMatrix data,
      }
      //pruning
      if(nb_at_time[i] >= next_step_qhull ||  i == (length - 1)){
-      // if (nb_at_time[i] > (p+1) ){
          doPruning(p, candidates, isPruning, helpB);
         // update-next_step_qhull
          next_step_qhull = common_ratio_step * candidates.size() + common_difference_step;
-      // }
      }
-       
   }
   //get res
   unsigned int change  = opt_change[length-1];
@@ -224,8 +223,18 @@ List getChangePoints(Rcpp::NumericMatrix data,
   res["cost"] = opt_cost[length-1];
   res["pre_change_mean"] = pre_change_mean;
   res["post_change_mean"] = post_change_mean;
-
-  if (cand_nb) res["candidate_number"] = nb_at_time;
+  res["nb_candidates"] = nb_at_time[length-1];
+  
+  if (cands){
+    std::vector<int> cands_n;
+    auto pruning_it = candidates.begin();
+    while (pruning_it != candidates.end()) {
+      cands_n.push_back((*pruning_it)+1);
+      ++pruning_it;
+    }
+    res["candidates"] = cands_n;
+  } 
+  if (cand_nb) res["nb_candidates_at_time"] = nb_at_time;
   if (opt_changes) res["opt_changes_at_time"] = opt_change;
   if (opt_costs) res["opt_costs_at_time"] = opt_cost;
   

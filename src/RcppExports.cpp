@@ -11,8 +11,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // getChangePoints
-List getChangePoints(Rcpp::NumericMatrix data, std::string method, std::string cost, int common_difference_step, int common_ratio_step, int first_step_qhull, bool cand_nb, bool opt_changes, bool opt_costs);
-RcppExport SEXP _focus_getChangePoints(SEXP dataSEXP, SEXP methodSEXP, SEXP costSEXP, SEXP common_difference_stepSEXP, SEXP common_ratio_stepSEXP, SEXP first_step_qhullSEXP, SEXP cand_nbSEXP, SEXP opt_changesSEXP, SEXP opt_costsSEXP) {
+List getChangePoints(Rcpp::NumericMatrix data, std::string method, std::string cost, int common_difference_step, int common_ratio_step, int first_step_qhull, bool cand_nb, bool opt_changes, bool opt_costs, bool cands);
+RcppExport SEXP _focus_getChangePoints(SEXP dataSEXP, SEXP methodSEXP, SEXP costSEXP, SEXP common_difference_stepSEXP, SEXP common_ratio_stepSEXP, SEXP first_step_qhullSEXP, SEXP cand_nbSEXP, SEXP opt_changesSEXP, SEXP opt_costsSEXP, SEXP candsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -25,13 +25,14 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type cand_nb(cand_nbSEXP);
     Rcpp::traits::input_parameter< bool >::type opt_changes(opt_changesSEXP);
     Rcpp::traits::input_parameter< bool >::type opt_costs(opt_costsSEXP);
-    rcpp_result_gen = Rcpp::wrap(getChangePoints(data, method, cost, common_difference_step, common_ratio_step, first_step_qhull, cand_nb, opt_changes, opt_costs));
+    Rcpp::traits::input_parameter< bool >::type cands(candsSEXP);
+    rcpp_result_gen = Rcpp::wrap(getChangePoints(data, method, cost, common_difference_step, common_ratio_step, first_step_qhull, cand_nb, opt_changes, opt_costs, cands));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_focus_getChangePoints", (DL_FUNC) &_focus_getChangePoints, 9},
+    {"_focus_getChangePoints", (DL_FUNC) &_focus_getChangePoints, 10},
     {NULL, NULL, 0}
 };
 
