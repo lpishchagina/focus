@@ -14,90 +14,72 @@ using namespace orgQhull;
  11 - gaussian cost, FOCuS;
  2  - poisson cost, FOCuS0;
  22 - poisson cost, FOCuS;
- 3  - pascal cost, FOCuS0;
- 33 - pascal cost, FOCuS;
  */
 unsigned int get_costType(std::string method, 
                           std::string cost) {
   unsigned int costType = 0;
   if (cost == "gauss") costType = 1;
   if (cost == "poisson") costType = 2;
-  if (cost == "pascal") costType = 3;
- /* if (method == "FOCuS0") costType = costType *1;*/
   if (method == "FOCuS") costType = costType * 11;
   return costType;
 }
 
-/* Function returns the value of Gaussian cost function for FOCuS0 or FOCuS
- * Cost function can be rewrite as  q(µ) = A(µ)+Bµ+C  
- * In Gaussian case, A(µ)= µ^2.
- * We calculate coefficients B, C by functions helpB(for gaussian case, (t,cumsum x) and helpC(for gaussian case, sum x²)
- */
+/* Function returns the value of cost function for FOCuS0 or FOCuS */
 double get_cost(unsigned int typeCost, 
                 unsigned int p, 
                 unsigned int change, 
                 unsigned int t, 
-                double* &helpC, 
-                double** &helpB) {
+                double** &cumsumMatrix) {
   //Focus0 gauss
-  double cost =  2* helpC[t];// NOTE CHECK CODE GUILLEM MULT 2
+  double cost =  0;
+  //memory
+  double* right_cumsum = new double[p+1];
+  //[t-change, S(t)-S(change)]
+  for (size_t k = 0; k <= p; k++)
+    right_cumsum[k] = cumsumMatrix[t][k] - cumsumMatrix[change][k];
+  //Gaussian model
   if (typeCost == 1 || typeCost == 11) {
-    //memory
-    double* right_cumsum = new double[p+1];//
-    for (size_t k = 0; k <= p; k++)
-      right_cumsum[k] = helpB[change][k] - helpB[t][k];
+    //FOCuS0
     for (size_t k = 0; k < p; k++)
-      cost = cost - 2 * right_cumsum[k+1] * right_cumsum[k+1] / abs(right_cumsum[0]);
-    //Focus gauss
+      cost = cost - right_cumsum[k+1] * right_cumsum[k+1] / right_cumsum[0];
+    //FOCuS
     if (typeCost == 11)
       for (size_t k = 0; k < p; k++)
-        cost = cost - 2 * helpB[change][k+1] * helpB[change][k+1] / abs(helpB[change][0]+1);//ATTENTION +1 check!!!
-    //memory
-    delete []right_cumsum;
+        cost = cost - cumsumMatrix[change][k+1] * cumsumMatrix[change][k+1] / (cumsumMatrix[change][0]+1);
   }
+  //Poisson model
+  if (typeCost == 2 || typeCost == 22) {
+    //FOCuS0
+    for (size_t k = 0; k < p; k++)
+      if(right_cumsum[k+1] != 0)
+        cost = cost + right_cumsum[k+1] * ( 1 - log(right_cumsum[k+1] / right_cumsum[0]));
+    //FOCuS
+    if (typeCost == 22)
+      for (size_t k = 0; k < p; k++)
+        if(cumsumMatrix[change][k+1] != 0)
+          cost = cost + cumsumMatrix[change][k+1] * (1- log(cumsumMatrix[change][k+1] / (cumsumMatrix[change][0]+1)));
+    cost = 2*cost; 
+  }
+  //clean memory
+  delete []right_cumsum;
   return cost;
 }
 
-
-
-/*Function calculates matrix helpB. (n+1)x(p+1)
- * row i :(i, sumsum x^k), k=1,..,p
+/*Function calculates matrix cumsumMatrix. (n+1)x(p+1)
+ * row i :(i, cumsum x^k), k=1,..,p
  * */
-void get_helpB(unsigned int typeCost, 
+void get_cumsumMatrix(unsigned int typeCost, 
                unsigned int p, 
                unsigned int length, 
-               double** &helpB,  
+               double** &cumsumMatrix,  
                Rcpp::NumericMatrix data) {// 0,0...0//1,x11,...,x1p//...
-  //gauss: cumsum ts
-  if (typeCost == 1 || typeCost == 11) {
-    for (size_t i = 0; i < length; i++) helpB[i][0] = i; //time t
-    for (size_t k = 0; k < p; k++) helpB[0][k+1] = data(0, k);//row 0
+    for (size_t i = 0; i < length; i++) cumsumMatrix[i][0] = i; //time t
+    for (size_t k = 0; k < p; k++) cumsumMatrix[0][k+1] = data(0, k);//row 0
     //cumsum
     for (size_t i = 1; i < length; i++)
       for (size_t k = 0; k < p; k++) 
-        helpB[i][k+1] = helpB[i-1][k+1] + data(i, k);
-  }
+        cumsumMatrix[i][k+1] = cumsumMatrix[i-1][k+1] + data(i, k);
 }
-
-/*Function calculates vector helpC 1x(n+1) with cumsum x² */
-void get_helpC(unsigned int typeCost, 
-               unsigned int p, 
-               unsigned int length, 
-               double* &helpC,  
-               Rcpp::NumericMatrix data) {
-  //gauss: cumsum ts^2
-  double value = 0;
-  if (typeCost == 1 || typeCost == 11) {
-    for (size_t k = 0; k < p; k++) value = value + data(0, k) * data(0, k);
-    helpC[0] =value;    //first element
-    for (size_t i = 1; i < length; i++) {
-      value = 0;
-      for (size_t k = 0; k < p; k++) value = value + data(i, k) * data(i, k);
-      helpC[i] = helpC[i-1] + value; 
-    }
-  }
-}
-
 
 /* Function obtains candidate's indices, 
  * builds the convex hull 
@@ -105,13 +87,13 @@ void get_helpC(unsigned int typeCost,
 void doPruning(unsigned int p, 
                std::list<int> &candidates, 
                bool* & isPruning, 
-               double** & helpB) {
+               double** & cumsumMatrix) {
   std::vector<coordT> points;       // coordinate vector of all candidates
   for ( auto it = candidates.begin(); it != candidates.end(); it++) {
     isPruning[(*it)] = true;        // flag: do pruning for all candidates at time t
-    //we generate coordinate vector of all candidates from helpB for Qhull
+    //we generate coordinate vector of all candidates from cumsumMatrix for Qhull
     for (unsigned int k = 0; k <= p; k++)
-      points.push_back(helpB[(*it)][k]);
+      points.push_back(cumsumMatrix[(*it)][k]);
   }
   //do Qhull
   orgQhull::Qhull qhull;
@@ -136,6 +118,8 @@ void doPruning(unsigned int p,
   }
 }
 
+
+
 // [[Rcpp::export]]
 List getChangePoints(Rcpp::NumericMatrix data, 
                      std::string method = "FOCuS0", 
@@ -147,6 +131,10 @@ List getChangePoints(Rcpp::NumericMatrix data,
                      bool opt_changes = false, 
                      bool opt_costs = false,
                      bool cands = false) {
+  //stop
+  if (method != "FOCuS0" && method !="FOCuS") {throw std::range_error("Parameter method should be FOCuS0 or FOCuS !");}
+  if (cost != "gauss" && cost != "poisson") {throw std::range_error("Parameter cost should be gauss or poisson !");}
+  
   //data parameters
   unsigned int p = (unsigned int)data.ncol();
   unsigned int length = (unsigned int) data.nrow();
@@ -155,17 +143,17 @@ List getChangePoints(Rcpp::NumericMatrix data,
   
   //memory help tables and vectors
   bool* isPruning = new bool[length];   //for pruning's flag
-  double* helpC = new double[length];    //For coefficient B // ts2_cumsum;
-  double** helpB = new double*[length];// For coefficient C // t + ts_left_cumsum;
-  for (unsigned int i = 0; i < length; i++) helpB[i] = new double[p + 1];
+  double** cumsumMatrix = new double*[length];
+  for (unsigned int i = 0; i < length; i++) cumsumMatrix[i] = new double[p + 1];
   
   //pre-processing
   for (int i  = 0;  i < length; i++) isPruning[i] = false;
-  get_helpC(typeCost, p, length, helpC, data);
-  get_helpB(typeCost, p, length, helpB, data);
+  get_cumsumMatrix(typeCost, p, length, cumsumMatrix, data);
   
   //get first step for qhull
   int next_step_qhull = first_step_qhull + p;         // step > p
+  if (cost == "poisson")
+    next_step_qhull = next_step_qhull  + 10; //ATTENTION: do the constant for poisson model, now it is 10!!! 
   
   //initialization
   std::list<int> candidates;     // change point candidates at time t
@@ -186,7 +174,8 @@ List getChangePoints(Rcpp::NumericMatrix data,
     nb_at_time[i] = candidates.size();
     // optimal cost and change
      for(auto it = candidates.begin(); it != candidates.end(); it++){
-       candidate_cost = get_cost(typeCost, p, (*it), i, helpC, helpB);
+       candidate_cost = get_cost(typeCost, p, (*it), i, cumsumMatrix);
+       
        if (candidate_cost < opt_cost[i]) {                      //find min
          opt_cost[i] = candidate_cost;
          opt_change[i] = (*it) + 1; //for R
@@ -194,7 +183,7 @@ List getChangePoints(Rcpp::NumericMatrix data,
      }
      //pruning
      if(nb_at_time[i] >= next_step_qhull ||  i == (length - 1)){
-         doPruning(p, candidates, isPruning, helpB);
+         doPruning(p, candidates, isPruning, cumsumMatrix);
         // update-next_step_qhull
          next_step_qhull = common_ratio_step * candidates.size() + common_difference_step;
      }
@@ -204,32 +193,31 @@ List getChangePoints(Rcpp::NumericMatrix data,
   std::vector<double> pre_change_mean;
   std::vector<double> post_change_mean;
   for(unsigned int k = 1; k <= p; k++) {
-    pre_change_mean.push_back(helpB[change-1][k]/change); 
-    post_change_mean.push_back((helpB[length-1][k] - helpB[change-1][k])/(length - change)); 
+    pre_change_mean.push_back(cumsumMatrix[change-1][k]/change); 
+    post_change_mean.push_back((cumsumMatrix[length-1][k] - cumsumMatrix[change-1][k])/(length - change)); 
   }
-  
+  //add the last nb_cand
+  nb_at_time.push_back(candidates.size());
   //memory
-  for (unsigned int i = 0; i < length; i++) delete(helpB[i]);
+  for (unsigned int i = 0; i < length; i++) delete(cumsumMatrix[i]);
   delete [] isPruning;
-  delete [] helpC;    
-  delete [] helpB ;
+  delete [] cumsumMatrix ;
   isPruning = NULL;
-  helpB = NULL;
-  helpC = NULL;
-  
+  cumsumMatrix = NULL;
   //res
   List res;
-  res["change"] = change + 1;//+1 for R
+  res["change"] = change;
   res["cost"] = opt_cost[length-1];
   res["pre_change_mean"] = pre_change_mean;
   res["post_change_mean"] = post_change_mean;
-  res["nb_candidates"] = nb_at_time[length-1];
+  
+  res["nb_candidates"] = nb_at_time[length];
   
   if (cands){
     std::vector<int> cands_n;
     auto pruning_it = candidates.begin();
     while (pruning_it != candidates.end()) {
-      cands_n.push_back((*pruning_it)+1);
+      cands_n.push_back((*pruning_it)+1);//for R
       ++pruning_it;
     }
     res["candidates"] = cands_n;
@@ -237,7 +225,6 @@ List getChangePoints(Rcpp::NumericMatrix data,
   if (cand_nb) res["nb_candidates_at_time"] = nb_at_time;
   if (opt_changes) res["opt_changes_at_time"] = opt_change;
   if (opt_costs) res["opt_costs_at_time"] = opt_cost;
-  
   return res;
 }
     
