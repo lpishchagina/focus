@@ -1,0 +1,11 @@
+Package: focus
+Type: Package
+Title: Multidimensional Fast Online Changepoint Detection via Functional Pruning CUSUM statistics
+Version: 1.0
+Date: 2023-05-29
+Authors@R: c(person("Liudmila", "Pishchagina", email = "ludmilashabarshova1991@gmail.com", role = c("aut", "cre")),person("Guillem", "Rigaill", role = c("aut")),person("Vincent", "Runge", role = c("aut")))
+Maintainer: Liudmila Pishchagina <liudmila.pishchagina@univ-evry.fr>
+Description: focus is an R package written in Rcpp/C++ and developed to detect change using the Multidimensional Fast Online Changepoint Detection via Functional Pruning CUSUM statistics  method (MdFOCuS) in p-variate time series of length n from Exponential Natural family (Gaussian and Poisson Models).
+License: GPL (>= 2)
+Imports: Rcpp (>= 1.0.10)
+LinkingTo: Rcpp

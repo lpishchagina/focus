@@ -118,57 +118,15 @@ void doPruning(unsigned int p,
   }
 }
 
- //' @title getChangePoints
- //'
- //' @description Single Changepoint Detection using methods: MdFOCuS0 and MdFOCuS.
- //' @param data is a matrix of data (n rows x p-columns, where p - dimension, n - length).
- //' @param method is the algorithm: 'FOCuS0'or 'FOCuS'.
- //' @param cost is the type of cost: 'gauss' or 'poisson'.
- //' @param common_difference_step is the beta parameter for 'next'.
- //' @param common_ratio_step is the alpha parameter for 'next'.
- //' @param first_step_qhull is the parameter for the first next (next = first_step_qhull + p).
- //' @param cand_nb is the boolean parameter ('cand_nb=true' => get candidate number)
- //' @param opt_changes is the boolean parameter ('opt_changes=true' => get optimal changes)
- //' @param opt_costs is the boolean parameter ('opt_costs=true' => get optimal costs)
- //' @param cands is the boolean parameter ('cands=true' => get candidates)
- //'
- //' @return a list of  elements  = (changes, means, UnpenalizedCost, NumberOfCandidates).
- //'
- //' \describe{
- //' \item{\code{change}}{is the changepoint.}
- //' \item{\code{cost}}{is a number equal to the segmentation cost.}
- //' \item{\code{pre_change_mean}}{is the vector of pre-change means for the p-variate time series.}
- //' \item{\code{post_change_mean}}{is the vector of post-change means for the p-variate time series.}
- //' \item{\code{nb_candidates}}{is a number of candidates at time n.}
- //' \item{\code{candidates}}{is a list of candidates at each at time n.}
- //' \item{\code{nb_candidates_at_time}}{is a list of candidatenumber at each iteration.}
- //' \item{\code{opt_changes_at_time}}{is a list of optimal changes at each iteration.}
- //' \item{\code{opt_costs_at_time}}{is a list of coptimal costs (without constant B') at each iteration.}
- //' }
- //' @examples
- //' 
- //'  set.seed(21)
- //' N <- 100
- //' P <- 2
- //' Change <- N %/% 2
- //' theta0 <-  rep(0, P)
- //' #Data generation
- //' ##the time series with one change
- //' ts_gauss <- generate_ts(type = "gauss", p = P, n = N, changes = Change, means = matrix(c(theta0, theta0 + 5), nrow = P))
- //' ts_poisson <- generate_ts(type = "poisson", p = P, n = N, changes = Change,  means = matrix(c(theta0 + 1, theta0 + 5), nrow = P))
- //' ##the time series with one change
- //' ts_gauss0 <- generate_ts(type = "gauss", p = P, n = N, changes = NULL, means = matrix(0, ncol = 1, nrow = P))
- //' ts_poisson0 <- generate_ts(type = "poisson", p = P, n = N, changes = NULL, means = matrix(1, ncol = 1, nrow = P))
- //' getChangePoints(ts_gauss, cands = TRUE, common_difference_step=1,  common_ratio_step=2,  first_step_qhull=1)
-//' getChangePoints(ts_gauss, method ='FOCuS', cands = TRUE, common_difference_step=1, common_ratio_step=2, first_step_qhull=1)
+
 
 // [[Rcpp::export]]
 List getChangePoints(Rcpp::NumericMatrix data, 
                      std::string method = "FOCuS0", 
                      std::string cost = "gauss",
-                     double common_difference_step = 1,
-                     double common_ratio_step = 1, 
-                     int first_step_qhull = 1,
+                     int common_difference_step = 1,
+                     int common_ratio_step = 1, 
+                     int first_step_qhull = 5,
                      bool cand_nb = false, 
                      bool opt_changes = false, 
                      bool opt_costs = false,
@@ -227,7 +185,7 @@ List getChangePoints(Rcpp::NumericMatrix data,
      if(nb_at_time[i] >= next_step_qhull ||  i == (length - 1)){
          doPruning(p, candidates, isPruning, cumsumMatrix);
         // update-next_step_qhull
-         next_step_qhull = floor(common_ratio_step * candidates.size() + common_difference_step);
+         next_step_qhull = common_ratio_step * candidates.size() + common_difference_step;
      }
   }
   //get res
@@ -246,14 +204,10 @@ List getChangePoints(Rcpp::NumericMatrix data,
   delete [] cumsumMatrix ;
   isPruning = NULL;
   cumsumMatrix = NULL;
-  //constant B'(x) = sum_{i=1}^length x²
-  double constant = 0;
-  for (size_t i = 0; i < length; i++)
-    for (size_t k = 0; k < p; k++) 
-      constant = constant + data(i, k)*data(i, k);
+  //res
   List res;
   res["change"] = change;
-  res["cost"] = opt_cost[length-1] + constant;
+  res["cost"] = opt_cost[length-1];
   res["pre_change_mean"] = pre_change_mean;
   res["post_change_mean"] = post_change_mean;
   

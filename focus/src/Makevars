@@ -1,0 +1,3 @@
+PKG_CPPFLAGS =  -I"/usr/local/include/libqhulcpp"
+
+PKG_LIBS= -L "/usr/local/lib/" -lqhullcpp -lqhull_r -lqhullstatic -lqhullstatic_r
