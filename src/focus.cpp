@@ -126,7 +126,7 @@ void doPruning(unsigned int p,
  //' @param cost is the type of cost: 'gauss' or 'poisson'.
  //' @param common_difference_step is the beta parameter for 'next'.
  //' @param common_ratio_step is the alpha parameter for 'next'.
- //' @param first_step_qhull is the parameter for the first next (next = first_step_qhull + p).
+ //' @param first_step_qhull is the parameter for the first next (next = first_step_qhull + p+1).
  //' @param cand_nb is the boolean parameter ('cand_nb=true' => get candidate number)
  //' @param opt_changes is the boolean parameter ('opt_changes=true' => get optimal changes)
  //' @param opt_costs is the boolean parameter ('opt_costs=true' => get optimal costs)
@@ -193,7 +193,7 @@ List getChangePoints(Rcpp::NumericMatrix data,
   get_cumsumMatrix(typeCost, p, length, cumsumMatrix, data);
   
   //get first step for qhull
-  int next_step_qhull = first_step_qhull + p;         // step > p
+  int next_step_qhull = first_step_qhull + p+1;         // step > p+1
   if (cost == "poisson")
     next_step_qhull = next_step_qhull  + 10; //ATTENTION: do the constant for poisson model, now it is 10!!! 
   
